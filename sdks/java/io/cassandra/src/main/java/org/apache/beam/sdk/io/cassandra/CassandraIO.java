@@ -1497,8 +1497,7 @@ public class CassandraIO {
     if (cachingEnabled) {
       if (cachingKey != null) {
         key = cachingKey.get();
-      }
-      else if (hosts != null) {
+      } else if (hosts != null) {
         key = hosts.get().stream().reduce("", (s1, s2) -> s1 + "_" + s2);
       }
 
@@ -1587,8 +1586,7 @@ public class CassandraIO {
     if (cachingEnabled) {
       if (cachingKey != null) {
         key = cachingKey.get();
-      }
-      else if (hosts != null) {
+      } else if (hosts != null) {
         key = hosts.get().stream().reduce("", (s1, s2) -> s1 + "_" + s2);
       }
 
@@ -1631,7 +1629,7 @@ public class CassandraIO {
             HostDistance.LOCAL, poolingCoreConnectionsPerHostLocal.get());
       }
 
-      if (poolingMaxConnectionsPerHostLocal != null){
+      if (poolingMaxConnectionsPerHostLocal != null) {
         poolingOptions.setMaxConnectionsPerHost(
             HostDistance.LOCAL, poolingMaxConnectionsPerHostLocal.get());
       }
@@ -1641,35 +1639,35 @@ public class CassandraIO {
             HostDistance.REMOTE, poolingCoreConnectionsPerHostRemote.get());
       }
 
-      if (poolingMaxConnectionsPerHostRemote != null){
+      if (poolingMaxConnectionsPerHostRemote != null) {
         poolingOptions.setMaxConnectionsPerHost(
             HostDistance.REMOTE, poolingMaxConnectionsPerHostRemote.get());
       }
 
-      if (poolingHeartbeatIntervalSeconds != null){
+      if (poolingHeartbeatIntervalSeconds != null) {
         poolingOptions.setHeartbeatIntervalSeconds(poolingHeartbeatIntervalSeconds.get());
       }
 
-      if (poolingIdleTimeoutSeconds != null){
+      if (poolingIdleTimeoutSeconds != null) {
         poolingOptions.setIdleTimeoutSeconds(poolingIdleTimeoutSeconds.get());
       }
 
-      if (poolingNewConnectionThresholdLocal != null){
+      if (poolingNewConnectionThresholdLocal != null) {
         poolingOptions.setNewConnectionThreshold(
             HostDistance.LOCAL, poolingNewConnectionThresholdLocal.get());
       }
 
-      if (poolingNewConnectionThresholdRemote != null){
+      if (poolingNewConnectionThresholdRemote != null) {
         poolingOptions.setNewConnectionThreshold(
             HostDistance.REMOTE, poolingNewConnectionThresholdRemote.get());
       }
 
-      if (poolingMaxRequestsPerConnectionLocal != null){
+      if (poolingMaxRequestsPerConnectionLocal != null) {
         poolingOptions.setMaxRequestsPerConnection(
             HostDistance.LOCAL, poolingMaxRequestsPerConnectionLocal.get());
       }
 
-      if (poolingMaxRequestsPerConnectionRemote != null){
+      if (poolingMaxRequestsPerConnectionRemote != null) {
         poolingOptions.setMaxRequestsPerConnection(
             HostDistance.REMOTE, poolingMaxRequestsPerConnectionRemote.get());
       }
@@ -1735,10 +1733,9 @@ public class CassandraIO {
               spec.poolingMaxRequestsPerConnectionRemote(),
               spec.poolingHeartbeatIntervalSeconds());
 
-      if (spec.optimizeSessions() != null && spec.optimizeSessions().get()){
+      if (spec.optimizeSessions() != null && spec.optimizeSessions().get()) {
         this.isCachedSession = spec.optimizeSessions().get();
-      }
-      else {
+      } else {
         this.isCachedSession = false;
       }
 
