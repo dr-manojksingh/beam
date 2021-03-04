@@ -23,7 +23,9 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PlainTextAuthProvider;
+import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
@@ -39,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
@@ -170,6 +173,30 @@ public class CassandraIO {
 
     @Nullable
     abstract SerializableFunction<Session, Mapper> mapperFactoryFn();
+
+    abstract @Nullable ValueProvider<Boolean> optimizeSessions();
+
+    abstract @Nullable ValueProvider<String> sessionCachingKey();
+
+    abstract @Nullable ValueProvider<Integer> poolingCoreConnectionsPerHostLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxConnectionsPerHostLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingCoreConnectionsPerHostRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxConnectionsPerHostRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingNewConnectionThresholdLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingNewConnectionThresholdRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingIdleTimeoutSeconds();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingHeartbeatIntervalSeconds();
 
     abstract Builder<T> builder();
 
@@ -307,6 +334,121 @@ public class CassandraIO {
       return builder().setMinNumberOfSplits(minNumberOfSplits).build();
     }
 
+    /** Specify that the sessions and cluster should be reused where possible. */
+    public Read<T> withOptimizeSessions(ValueProvider<Boolean> optimizeSessions) {
+      return builder().setOptimizeSessions(optimizeSessions).build();
+    }
+
+    /**
+     * Specify the core connections for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingCoreConnectionsPerHostLocal(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostLocal) {
+      return builder()
+          .setPoolingCoreConnectionsPerHostLocal(poolingCoreConnectionsPerHostLocal)
+          .build();
+    }
+
+    /**
+     * Specify the max connections for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingMaxConnectionsPerHostLocal(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostLocal) {
+      return builder()
+          .setPoolingMaxConnectionsPerHostLocal(poolingCoreConnectionsPerHostLocal)
+          .build();
+    }
+
+    /**
+     * Specify the core connections for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingCoreConnectionsPerHostRemote(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostRemote) {
+      return builder()
+          .setPoolingCoreConnectionsPerHostRemote(poolingCoreConnectionsPerHostRemote)
+          .build();
+    }
+
+    /**
+     * Specify the max connections for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingMaxConnectionsPerHostRemote(
+        ValueProvider<Integer> poolingMaxConnectionsPerHostRemote) {
+      return builder()
+          .setPoolingMaxConnectionsPerHostRemote(poolingMaxConnectionsPerHostRemote)
+          .build();
+    }
+
+    /**
+     * Specify the new connections threshold for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingNewConnectionThresholdLocal(
+        ValueProvider<Integer> poolingNewConnectionThresholdLocal) {
+      return builder()
+          .setPoolingNewConnectionThresholdLocal(poolingNewConnectionThresholdLocal)
+          .build();
+    }
+
+    /**
+     * Specify the new connections threshold for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingNewConnectionThresholdRemote(
+        ValueProvider<Integer> poolingNewConnectionThresholdRemote) {
+      return builder()
+          .setPoolingNewConnectionThresholdRemote(poolingNewConnectionThresholdRemote)
+          .build();
+    }
+
+    /**
+     * Specify the idle timeout after which connection is closed. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingIdleTimeoutSeconds(ValueProvider<Integer> poolingIdleTimeoutSeconds) {
+      return builder().setPoolingIdleTimeoutSeconds(poolingIdleTimeoutSeconds).build();
+    }
+
+    /**
+     * Specify the max requests per connection for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingMaxRequestsPerConnectionLocal(
+        ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal) {
+      return builder()
+          .setPoolingMaxRequestsPerConnectionLocal(poolingMaxRequestsPerConnectionLocal)
+          .build();
+    }
+
+    /**
+     * Specify the max requests per connection for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingMaxRequestsPerConnectionRemote(
+        ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote) {
+      return builder()
+          .setPoolingMaxRequestsPerConnectionRemote(poolingMaxRequestsPerConnectionRemote)
+          .build();
+    }
+
+    /**
+     * Specify the max requests per connection for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Read<T> withPoolingHeartbeatIntervalSeconds(
+        ValueProvider<Integer> poolingHeartbeatIntervalSeconds) {
+      return builder().setPoolingHeartbeatIntervalSeconds(poolingHeartbeatIntervalSeconds).build();
+    }
+
+    /** Specify the caching key to use for session caching. It should be unique per cluster. */
+    public Read<T> withSessionCachingKey(ValueProvider<String> sessionCachingKey) {
+      return builder().setSessionCachingKey(sessionCachingKey).build();
+    }
+
     /**
      * A factory to create a specific {@link Mapper} for a given Cassandra Session. This is useful
      * to provide mappers that don't rely in Cassandra annotated objects.
@@ -356,6 +498,40 @@ public class CassandraIO {
       abstract Builder<T> setConsistencyLevel(ValueProvider<String> consistencyLevel);
 
       abstract Builder<T> setMinNumberOfSplits(ValueProvider<Integer> minNumberOfSplits);
+
+      abstract Builder<T> setOptimizeSessions(ValueProvider<Boolean> optimizeSessions);
+
+      abstract Builder<T> setPoolingCoreConnectionsPerHostLocal(
+          ValueProvider<Integer> poolingCoreConnectionsPerHostLocal);
+
+      abstract Builder<T> setPoolingMaxConnectionsPerHostLocal(
+          ValueProvider<Integer> poolingMaxConnectionsPerHostLocal);
+
+      abstract Builder<T> setPoolingCoreConnectionsPerHostRemote(
+          ValueProvider<Integer> poolingCoreConnectionsPerHostRemote);
+
+      abstract Builder<T> setPoolingMaxConnectionsPerHostRemote(
+          ValueProvider<Integer> poolingMaxConnectionsPerHostRemote);
+
+      abstract Builder<T> setPoolingNewConnectionThresholdLocal(
+          ValueProvider<Integer> poolingNewConnectionThresholdLocal);
+
+      abstract Builder<T> setPoolingNewConnectionThresholdRemote(
+          ValueProvider<Integer> poolingNewConnectionThresholdRemote);
+
+      abstract Builder<T> setPoolingIdleTimeoutSeconds(
+          ValueProvider<Integer> poolingIdleTimeoutSeconds);
+
+      abstract Builder<T> setPoolingMaxRequestsPerConnectionLocal(
+          ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal);
+
+      abstract Builder<T> setPoolingMaxRequestsPerConnectionRemote(
+          ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote);
+
+      abstract Builder<T> setPoolingHeartbeatIntervalSeconds(
+          ValueProvider<Integer> poolingHeartbeatIntervalSeconds);
+
+      abstract Builder<T> setSessionCachingKey(ValueProvider<String> sessionCachingKey);
 
       abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn);
 
@@ -410,7 +586,20 @@ public class CassandraIO {
               spec.username(),
               spec.password(),
               spec.localDc(),
-              spec.consistencyLevel())) {
+              spec.consistencyLevel(),
+              spec.keyspace(),
+              spec.optimizeSessions(),
+              spec.sessionCachingKey(),
+              spec.poolingCoreConnectionsPerHostLocal(),
+              spec.poolingMaxConnectionsPerHostLocal(),
+              spec.poolingCoreConnectionsPerHostRemote(),
+              spec.poolingMaxConnectionsPerHostRemote(),
+              spec.poolingNewConnectionThresholdLocal(),
+              spec.poolingNewConnectionThresholdRemote(),
+              spec.poolingIdleTimeoutSeconds(),
+              spec.poolingMaxRequestsPerConnectionLocal(),
+              spec.poolingMaxRequestsPerConnectionRemote(),
+              spec.poolingHeartbeatIntervalSeconds())) {
         if (isMurmur3Partitioner(cluster)) {
           LOG.info("Murmur3Partitioner detected, splitting");
           return splitWithTokenRanges(
@@ -537,7 +726,20 @@ public class CassandraIO {
                 spec.username(),
                 spec.password(),
                 spec.localDc(),
-                spec.consistencyLevel())) {
+                spec.consistencyLevel(),
+                spec.keyspace(),
+                spec.optimizeSessions(),
+                spec.sessionCachingKey(),
+                spec.poolingCoreConnectionsPerHostLocal(),
+                spec.poolingMaxConnectionsPerHostLocal(),
+                spec.poolingCoreConnectionsPerHostRemote(),
+                spec.poolingMaxConnectionsPerHostRemote(),
+                spec.poolingNewConnectionThresholdLocal(),
+                spec.poolingNewConnectionThresholdRemote(),
+                spec.poolingIdleTimeoutSeconds(),
+                spec.poolingMaxRequestsPerConnectionLocal(),
+                spec.poolingMaxRequestsPerConnectionRemote(),
+                spec.poolingHeartbeatIntervalSeconds())) {
           if (isMurmur3Partitioner(cluster)) {
             try {
               List<TokenRange> tokenRanges =
@@ -674,25 +876,50 @@ public class CassandraIO {
       private Session session;
       private Iterator<T> iterator;
       private T current;
+      private final Boolean isCachedSession;
 
       CassandraReader(CassandraSource<T> source) {
         this.source = source;
+
+        this.isCachedSession =
+            (this.source.spec.optimizeSessions() != null)
+                ? this.source.spec.optimizeSessions().get()
+                : false;
       }
 
       @Override
       public boolean start() {
         LOG.debug("Starting Cassandra reader");
-        cluster =
-            getCluster(
+
+        session =
+            getSession(
                 source.spec.hosts(),
                 source.spec.port(),
                 source.spec.username(),
                 source.spec.password(),
                 source.spec.localDc(),
-                source.spec.consistencyLevel());
-        session = cluster.connect(source.spec.keyspace().get());
+                source.spec.consistencyLevel(),
+                source.spec.keyspace(),
+                source.spec.optimizeSessions(),
+                source.spec.sessionCachingKey(),
+                spec.poolingCoreConnectionsPerHostLocal(),
+                spec.poolingMaxConnectionsPerHostLocal(),
+                spec.poolingCoreConnectionsPerHostRemote(),
+                spec.poolingMaxConnectionsPerHostRemote(),
+                spec.poolingNewConnectionThresholdLocal(),
+                spec.poolingNewConnectionThresholdRemote(),
+                spec.poolingIdleTimeoutSeconds(),
+                spec.poolingMaxRequestsPerConnectionLocal(),
+                spec.poolingMaxRequestsPerConnectionRemote(),
+                spec.poolingHeartbeatIntervalSeconds());
+
+        if (session != null) {
+          cluster = session.getCluster();
+        }
+
         LOG.debug("Queries: " + source.splitQueries);
         List<ResultSetFuture> futures = new ArrayList<>();
+
         for (String query : source.splitQueries) {
           futures.add(session.executeAsync(query));
         }
@@ -723,11 +950,14 @@ public class CassandraIO {
       @Override
       public void close() {
         LOG.debug("Closing Cassandra reader");
-        if (session != null) {
-          session.close();
-        }
-        if (cluster != null) {
-          cluster.close();
+
+        if (!isCachedSession) {
+          if (session != null) {
+            session.close();
+          }
+          if (cluster != null) {
+            cluster.close();
+          }
         }
       }
 
@@ -790,6 +1020,30 @@ public class CassandraIO {
 
     @Nullable
     abstract SerializableFunction<Session, Mapper> mapperFactoryFn();
+
+    abstract @Nullable ValueProvider<Boolean> optimizeSessions();
+
+    abstract @Nullable ValueProvider<String> sessionCachingKey();
+
+    abstract @Nullable ValueProvider<Integer> poolingCoreConnectionsPerHostLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxConnectionsPerHostLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingCoreConnectionsPerHostRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxConnectionsPerHostRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingNewConnectionThresholdLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingNewConnectionThresholdRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingIdleTimeoutSeconds();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal();
+
+    abstract @Nullable ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote();
+
+    abstract @Nullable ValueProvider<Integer> poolingHeartbeatIntervalSeconds();
 
     abstract Builder<T> builder();
 
@@ -925,6 +1179,122 @@ public class CassandraIO {
       return builder().setConsistencyLevel(consistencyLevel).build();
     }
 
+    /** Specify that the sessions and cluster should be reused where possible. */
+    public Write<T> withOptimizeSessions(ValueProvider<Boolean> optimizeSessions) {
+      return builder().setOptimizeSessions(optimizeSessions).build();
+    }
+
+    /**
+     * Specify the core connections for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingCoreConnectionsPerHostLocal(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostLocal) {
+      return builder()
+          .setPoolingCoreConnectionsPerHostLocal(poolingCoreConnectionsPerHostLocal)
+          .build();
+    }
+
+    /**
+     * Specify the max connections for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingMaxConnectionsPerHostLocal(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostLocal) {
+      return builder()
+          .setPoolingMaxConnectionsPerHostLocal(poolingCoreConnectionsPerHostLocal)
+          .build();
+    }
+
+    /**
+     * Specify the core connections for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingCoreConnectionsPerHostRemote(
+        ValueProvider<Integer> poolingCoreConnectionsPerHostRemote) {
+      return builder()
+          .setPoolingCoreConnectionsPerHostRemote(poolingCoreConnectionsPerHostRemote)
+          .build();
+    }
+
+    /**
+     * Specify the max connections for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingMaxConnectionsPerHostRemote(
+        ValueProvider<Integer> poolingMaxConnectionsPerHostRemote) {
+      return builder()
+          .setPoolingMaxConnectionsPerHostRemote(poolingMaxConnectionsPerHostRemote)
+          .build();
+    }
+
+    /**
+     * Specify the new connections threshold for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingNewConnectionThresholdLocal(
+        ValueProvider<Integer> poolingNewConnectionThresholdLocal) {
+      return builder()
+          .setPoolingNewConnectionThresholdLocal(poolingNewConnectionThresholdLocal)
+          .build();
+    }
+
+    /**
+     * Specify the new connections threshold for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingNewConnectionThresholdRemote(
+        ValueProvider<Integer> poolingNewConnectionThresholdRemote) {
+      return builder()
+          .setPoolingNewConnectionThresholdRemote(poolingNewConnectionThresholdRemote)
+          .build();
+    }
+
+    /**
+     * Specify the idle timeout after which connection is closed. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingIdleTimeoutSeconds(
+        ValueProvider<Integer> poolingIdleTimeoutSeconds) {
+      return builder().setPoolingIdleTimeoutSeconds(poolingIdleTimeoutSeconds).build();
+    }
+
+    /**
+     * Specify the max requests per connection for local host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingMaxRequestsPerConnectionLocal(
+        ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal) {
+      return builder()
+          .setPoolingMaxRequestsPerConnectionLocal(poolingMaxRequestsPerConnectionLocal)
+          .build();
+    }
+
+    /**
+     * Specify the max requests per connection for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingMaxRequestsPerConnectionRemote(
+        ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote) {
+      return builder()
+          .setPoolingMaxRequestsPerConnectionRemote(poolingMaxRequestsPerConnectionRemote)
+          .build();
+    }
+
+    /**
+     * Specify the max requests per connection for remote host. See
+     * https://docs.datastax.com/en/drivers/java/3.10/com/datastax/driver/core/PoolingOptions.html
+     */
+    public Write<T> withPoolingHeartbeatIntervalSeconds(
+        ValueProvider<Integer> poolingHeartbeatIntervalSeconds) {
+      return builder().setPoolingHeartbeatIntervalSeconds(poolingHeartbeatIntervalSeconds).build();
+    }
+
+    /** Specify the caching key to use for session caching. It should be unique per cluster. */
+    public Write<T> withSessionCachingKey(ValueProvider<String> sessionCachingKey) {
+      return builder().setSessionCachingKey(sessionCachingKey).build();
+    }
+
     public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
       checkArgument(
           mapperFactoryFn != null,
@@ -1000,6 +1370,40 @@ public class CassandraIO {
 
       abstract Builder<T> setMutationType(MutationType mutationType);
 
+      abstract Builder<T> setOptimizeSessions(ValueProvider<Boolean> optimizeSessions);
+
+      abstract Builder<T> setPoolingCoreConnectionsPerHostLocal(
+          ValueProvider<Integer> poolingCoreConnectionsPerHostLocal);
+
+      abstract Builder<T> setPoolingMaxConnectionsPerHostLocal(
+          ValueProvider<Integer> poolingMaxConnectionsPerHostLocal);
+
+      abstract Builder<T> setPoolingCoreConnectionsPerHostRemote(
+          ValueProvider<Integer> poolingCoreConnectionsPerHostRemote);
+
+      abstract Builder<T> setPoolingMaxConnectionsPerHostRemote(
+          ValueProvider<Integer> poolingMaxConnectionsPerHostRemote);
+
+      abstract Builder<T> setPoolingNewConnectionThresholdLocal(
+          ValueProvider<Integer> poolingNewConnectionThresholdLocal);
+
+      abstract Builder<T> setPoolingNewConnectionThresholdRemote(
+          ValueProvider<Integer> poolingNewConnectionThresholdRemote);
+
+      abstract Builder<T> setPoolingIdleTimeoutSeconds(
+          ValueProvider<Integer> poolingIdleTimeoutSeconds);
+
+      abstract Builder<T> setPoolingMaxRequestsPerConnectionLocal(
+          ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal);
+
+      abstract Builder<T> setPoolingMaxRequestsPerConnectionRemote(
+          ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote);
+
+      abstract Builder<T> setPoolingHeartbeatIntervalSeconds(
+          ValueProvider<Integer> poolingHeartbeatIntervalSeconds);
+
+      abstract Builder<T> setSessionCachingKey(ValueProvider<String> sessionCachingKey);
+
       abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn);
 
       abstract Optional<SerializableFunction<Session, Mapper>> mapperFactoryFn();
@@ -1066,6 +1470,94 @@ public class CassandraIO {
     }
   }
 
+  private static Session getSession(
+      ValueProvider<List<String>> hosts,
+      ValueProvider<Integer> port,
+      ValueProvider<String> username,
+      ValueProvider<String> password,
+      ValueProvider<String> localDc,
+      ValueProvider<String> consistencyLevel,
+      ValueProvider<String> keySpace,
+      ValueProvider<Boolean> optimizeSessions,
+      ValueProvider<String> cachingKey,
+      ValueProvider<Integer> poolingCoreConnectionsPerHostLocal,
+      ValueProvider<Integer> poolingMaxConnectionsPerHostLocal,
+      ValueProvider<Integer> poolingCoreConnectionsPerHostRemote,
+      ValueProvider<Integer> poolingMaxConnectionsPerHostRemote,
+      ValueProvider<Integer> poolingNewConnectionThresholdLocal,
+      ValueProvider<Integer> poolingNewConnectionThresholdRemote,
+      ValueProvider<Integer> poolingIdleTimeoutSeconds,
+      ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal,
+      ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote,
+      ValueProvider<Integer> poolingHeartbeatIntervalSeconds) {
+    Boolean cachingEnabled = (optimizeSessions != null && optimizeSessions.get());
+    String key = null;
+    Session session = null;
+
+    if (cachingEnabled) {
+      if (cachingKey != null) {
+        key = cachingKey.get();
+      }
+      else if (hosts != null) {
+        key = hosts.get().stream().reduce("", (s1, s2) -> s1 + "_" + s2);
+      }
+
+      if (keySpace != null) {
+        key = key + "." + keySpace.get(); // add key space to key
+      }
+
+      if (sessionCache != null) {
+        session = sessionCache.getOrDefault(key, null);
+      }
+
+      if (session != null) {
+        return session;
+      }
+    }
+
+    final Cluster cluster =
+        getCluster(
+            hosts,
+            port,
+            username,
+            password,
+            localDc,
+            consistencyLevel,
+            keySpace,
+            optimizeSessions,
+            cachingKey,
+            poolingCoreConnectionsPerHostLocal,
+            poolingMaxConnectionsPerHostLocal,
+            poolingCoreConnectionsPerHostRemote,
+            poolingMaxConnectionsPerHostRemote,
+            poolingNewConnectionThresholdLocal,
+            poolingNewConnectionThresholdRemote,
+            poolingIdleTimeoutSeconds,
+            poolingMaxRequestsPerConnectionLocal,
+            poolingMaxRequestsPerConnectionRemote,
+            poolingHeartbeatIntervalSeconds);
+
+    if (cachingEnabled) {
+      // lazy initialize static cache
+      if (sessionCache == null) {
+        synchronized (CassandraIO.class) {
+          if (sessionCache == null) {
+            sessionCache = new ConcurrentHashMap<>();
+          }
+        }
+      }
+
+      session = sessionCache.computeIfAbsent(key, k -> cluster.connect());
+    } else {
+      session = cluster.connect();
+    }
+
+    return session;
+  }
+
+  private static volatile ConcurrentHashMap<String, Cluster> clusterCache;
+  private static volatile ConcurrentHashMap<String, Session> sessionCache;
+
   /** Get a Cassandra cluster using hosts and port. */
   private static Cluster getCluster(
       ValueProvider<List<String>> hosts,
@@ -1073,7 +1565,42 @@ public class CassandraIO {
       ValueProvider<String> username,
       ValueProvider<String> password,
       ValueProvider<String> localDc,
-      ValueProvider<String> consistencyLevel) {
+      ValueProvider<String> consistencyLevel,
+      ValueProvider<String> keySpace,
+      ValueProvider<Boolean> optimizeSessions,
+      ValueProvider<String> cachingKey,
+      ValueProvider<Integer> poolingCoreConnectionsPerHostLocal,
+      ValueProvider<Integer> poolingMaxConnectionsPerHostLocal,
+      ValueProvider<Integer> poolingCoreConnectionsPerHostRemote,
+      ValueProvider<Integer> poolingMaxConnectionsPerHostRemote,
+      ValueProvider<Integer> poolingNewConnectionThresholdLocal,
+      ValueProvider<Integer> poolingNewConnectionThresholdRemote,
+      ValueProvider<Integer> poolingIdleTimeoutSeconds,
+      ValueProvider<Integer> poolingMaxRequestsPerConnectionLocal,
+      ValueProvider<Integer> poolingMaxRequestsPerConnectionRemote,
+      ValueProvider<Integer> poolingHeartbeatIntervalSeconds) {
+
+    Boolean cachingEnabled = (optimizeSessions != null && optimizeSessions.get());
+    String key = null;
+    Cluster cluster = null;
+
+    if (cachingEnabled) {
+      if (cachingKey != null) {
+        key = cachingKey.get();
+      }
+      else if (hosts != null) {
+        key = hosts.get().stream().reduce("", (s1, s2) -> s1 + "_" + s2);
+      }
+
+      if (clusterCache != null) {
+        cluster = clusterCache.getOrDefault(key, null);
+      }
+
+      if (cluster != null) {
+        return cluster;
+      }
+    }
+
     Cluster.Builder builder =
         Cluster.builder().addContactPoints(hosts.get().toArray(new String[0])).withPort(port.get());
 
@@ -1093,7 +1620,79 @@ public class CassandraIO {
           new QueryOptions().setConsistencyLevel(ConsistencyLevel.valueOf(consistencyLevel.get())));
     }
 
-    return builder.build();
+    if (poolingCoreConnectionsPerHostLocal != null || poolingMaxConnectionsPerHostLocal != null) {
+
+      PoolingOptions poolingOptions = new PoolingOptions();
+
+      // TODO: set default pooling options here
+
+      if (poolingCoreConnectionsPerHostLocal != null) {
+        poolingOptions.setCoreConnectionsPerHost(
+            HostDistance.LOCAL, poolingCoreConnectionsPerHostLocal.get());
+      }
+
+      if (poolingMaxConnectionsPerHostLocal != null){
+        poolingOptions.setMaxConnectionsPerHost(
+            HostDistance.LOCAL, poolingMaxConnectionsPerHostLocal.get());
+      }
+
+      if (poolingCoreConnectionsPerHostRemote != null) {
+        poolingOptions.setCoreConnectionsPerHost(
+            HostDistance.REMOTE, poolingCoreConnectionsPerHostRemote.get());
+      }
+
+      if (poolingMaxConnectionsPerHostRemote != null){
+        poolingOptions.setMaxConnectionsPerHost(
+            HostDistance.REMOTE, poolingMaxConnectionsPerHostRemote.get());
+      }
+
+      if (poolingHeartbeatIntervalSeconds != null){
+        poolingOptions.setHeartbeatIntervalSeconds(poolingHeartbeatIntervalSeconds.get());
+      }
+
+      if (poolingIdleTimeoutSeconds != null){
+        poolingOptions.setIdleTimeoutSeconds(poolingIdleTimeoutSeconds.get());
+      }
+
+      if (poolingNewConnectionThresholdLocal != null){
+        poolingOptions.setNewConnectionThreshold(
+            HostDistance.LOCAL, poolingNewConnectionThresholdLocal.get());
+      }
+
+      if (poolingNewConnectionThresholdRemote != null){
+        poolingOptions.setNewConnectionThreshold(
+            HostDistance.REMOTE, poolingNewConnectionThresholdRemote.get());
+      }
+
+      if (poolingMaxRequestsPerConnectionLocal != null){
+        poolingOptions.setMaxRequestsPerConnection(
+            HostDistance.LOCAL, poolingMaxRequestsPerConnectionLocal.get());
+      }
+
+      if (poolingMaxRequestsPerConnectionRemote != null){
+        poolingOptions.setMaxRequestsPerConnection(
+            HostDistance.REMOTE, poolingMaxRequestsPerConnectionRemote.get());
+      }
+
+      builder.withPoolingOptions(poolingOptions);
+    }
+
+    if (cachingEnabled) {
+      // lazy initialize static cache
+      if (clusterCache == null) {
+        synchronized (CassandraIO.class) {
+          if (clusterCache == null) {
+            clusterCache = new ConcurrentHashMap<String, Cluster>();
+          }
+        }
+      }
+
+      cluster = clusterCache.computeIfAbsent(key, k -> builder.build());
+    } else {
+      cluster = builder.build();
+    }
+
+    return cluster;
   }
 
   /** Mutator allowing to do side effects into Apache Cassandra database. */
@@ -1110,17 +1709,40 @@ public class CassandraIO {
     private List<Future<Void>> mutateFutures;
     private final BiFunction<Mapper<T>, T, Future<Void>> mutator;
     private final String operationName;
+    private final Boolean isCachedSession;
 
     Mutator(Write<T> spec, BiFunction<Mapper<T>, T, Future<Void>> mutator, String operationName) {
-      this.cluster =
-          getCluster(
+
+      this.session =
+          getSession(
               spec.hosts(),
               spec.port(),
               spec.username(),
               spec.password(),
               spec.localDc(),
-              spec.consistencyLevel());
-      this.session = cluster.connect(spec.keyspace().get());
+              spec.consistencyLevel(),
+              spec.keyspace(),
+              spec.optimizeSessions(),
+              spec.sessionCachingKey(),
+              spec.poolingCoreConnectionsPerHostLocal(),
+              spec.poolingMaxConnectionsPerHostLocal(),
+              spec.poolingCoreConnectionsPerHostRemote(),
+              spec.poolingMaxConnectionsPerHostRemote(),
+              spec.poolingNewConnectionThresholdLocal(),
+              spec.poolingNewConnectionThresholdRemote(),
+              spec.poolingIdleTimeoutSeconds(),
+              spec.poolingMaxRequestsPerConnectionLocal(),
+              spec.poolingMaxRequestsPerConnectionRemote(),
+              spec.poolingHeartbeatIntervalSeconds());
+
+      if (spec.optimizeSessions() != null && spec.optimizeSessions().get()){
+        this.isCachedSession = spec.optimizeSessions().get();
+      }
+      else {
+        this.isCachedSession = false;
+      }
+
+      this.cluster = this.session.getCluster();
       this.mapperFactoryFn = spec.mapperFactoryFn();
       this.mutateFutures = new ArrayList<>();
       this.mutator = mutator;
@@ -1156,11 +1778,13 @@ public class CassandraIO {
         waitForFuturesToFinish();
       }
 
-      if (session != null) {
-        session.close();
-      }
-      if (cluster != null) {
-        cluster.close();
+      if (!this.isCachedSession) {
+        if (session != null) {
+          session.close();
+        }
+        if (cluster != null) {
+          cluster.close();
+        }
       }
     }
 
